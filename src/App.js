@@ -1,31 +1,39 @@
 import github from "./db.js";
-import query from "./query.js";
+import query from "./Query.js";
 import { useEffect, useState, useCallback } from "react";
 import RepoInfo from "./RepoInfo";
+import SearchBox from "./SearchBox";
 
 function App() {
 
   let [userName, setUserName] = useState("");
   let [repoList, setRepoList] = useState(null);
+  let [pageCount, setPageCount] = useState(10);
+  let [queryString, setQueryString] = useState("");
+  let [totalCount, setTotalCount] = useState(null);
 
   const fetchData = useCallback(() => {
+    const queryText = JSON.stringify(query(pageCount, queryString)); 
+
     fetch(github.baseURL, {
       // Need to use POST since we are using headers
       method: "POST",
       headers: github.headers,
-      body: JSON.stringify(query),
+      body: queryText,
     })
     .then(response => response.json())
     .then(data => {
       const viewer = data.data.viewer
       const repos = data.data.search.nodes
+      const total = data.data.search.repositoryCount
       setUserName(viewer.name);
       setRepoList(repos);
+      setTotalCount(total);
     })
     .catch(err => {
       console.log(err)
     });
-  }, []);
+  }, [pageCount, queryString]);
 
   useEffect(() => {
     fetchData();
@@ -35,7 +43,13 @@ function App() {
     <div className="App container mt-5">
       <h1 className="text-primary"><i className="bi bi-diagram-2-fill"></i>Repos</h1>
       <p>Hey there {userName}</p>
-
+      <SearchBox 
+        totalCount={totalCount}
+        pageCount={pageCount}
+        queryString={queryString}
+        onTotalChange={(myNumber) => {setPageCount(myNumber)}}
+        onQueryChange={(myString) => {setQueryString(myString)}}
+      />
       { repoList && (
         <ul className="list-group list-group-flush">
           { 
